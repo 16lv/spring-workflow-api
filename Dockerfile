@@ -6,6 +6,6 @@ RUN apk add --no-cache maven && mvn -B clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /workspace/target/taskflow-api-1.0.0.jar app.jar
+COPY --from=build /workspace/target/taskflow-api-1.2.0.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

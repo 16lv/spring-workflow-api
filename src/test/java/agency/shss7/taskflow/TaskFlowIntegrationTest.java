@@ -145,7 +145,23 @@ class TaskFlowIntegrationTest {
         mockMvc.perform(get("/api/v1/projects/CORE-API")
                 .header(HttpHeaders.AUTHORIZATION, bearer))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalTasks").value(1))
             .andExpect(jsonPath("$.completedTasks").value(1));
+
+        // 7. Partial task update and duplicate project code conflict check
+        var updateReq = new UpdateTaskRequest("Implement RFC 7807 ProblemDetail responses", null, TaskPriority.CRITICAL, null, null);
+        mockMvc.perform(patch("/api/v1/tasks/{id}", task.id())
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateReq)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.priority").value("CRITICAL"));
+
+        mockMvc.perform(post("/api/v1/projects")
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(projectReq)))
+            .andExpect(status().isConflict());
     }
 
     @Test

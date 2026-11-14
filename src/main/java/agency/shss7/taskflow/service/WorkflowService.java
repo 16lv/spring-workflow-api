@@ -134,7 +134,7 @@ public class WorkflowService {
     }
 
     private ProjectResponse toProjectResponse(Project project) {
-        long total = project.getTasks().size();
+        long total = taskRepository.countByProjectId(project.getId());
         long completed = taskRepository.countByProjectIdAndStatus(project.getId(), TaskStatus.DONE);
         return new ProjectResponse(
             project.getId(),

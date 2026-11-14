@@ -28,5 +28,7 @@ public interface TaskItemRepository extends JpaRepository<TaskItem, Long> {
         Pageable pageable
     );
 
+    long countByProjectId(Long projectId);
+
     long countByProjectIdAndStatus(Long projectId, TaskStatus status);
 }

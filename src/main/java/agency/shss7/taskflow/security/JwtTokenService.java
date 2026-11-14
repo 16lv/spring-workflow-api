@@ -22,7 +22,17 @@ public class JwtTokenService {
         @Value("${taskflow.jwt.secret:taskflow-dev-secret-key-at-least-32-bytes-long-for-hmac256}") String secret,
         @Value("${taskflow.jwt.expiration-seconds:86400}") long expirationSeconds
     ) {
-        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalArgumentException("JWT secret must not be blank");
+        }
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalArgumentException("JWT secret must be at least 32 UTF-8 bytes for HS256");
+        }
+        if (expirationSeconds <= 0) {
+            throw new IllegalArgumentException("JWT expirationSeconds must be positive");
+        }
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
         this.expirationSeconds = expirationSeconds;
     }
 
