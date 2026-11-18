@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 public final class TaskDtos {
 
@@ -63,5 +64,13 @@ public final class TaskDtos {
         String assigneeEmail,
         Instant createdAt,
         Instant updatedAt
+    ) {}
+
+    public record PagedTaskResponse(
+        List<TaskResponse> content,
+        int page,
+        int size,
+        long totalElements,
+        int totalPages
     ) {}
 }

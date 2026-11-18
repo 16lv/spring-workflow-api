@@ -120,7 +120,14 @@ public class WorkflowService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TaskResponse> searchTasks(
+    public TaskResponse getTaskById(Long taskId) {
+        TaskItem task = taskRepository.findById(taskId)
+            .orElseThrow(() -> new EntityNotFoundException("Task ID " + taskId + " not found"));
+        return toTaskResponse(task);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedTaskResponse searchTasks(
         Long projectId,
         TaskStatus status,
         TaskPriority priority,
@@ -129,8 +136,16 @@ public class WorkflowService {
         Pageable pageable
     ) {
         String normalizedSearch = (search != null && !search.isBlank()) ? search.trim() : null;
-        return taskRepository.searchTasks(projectId, status, priority, assigneeId, normalizedSearch, pageable)
-            .map(this::toTaskResponse);
+        Page<TaskItem> pageResult = taskRepository.searchTasks(
+            projectId, status, priority, assigneeId, normalizedSearch, pageable
+        );
+        return new PagedTaskResponse(
+            pageResult.getContent().stream().map(this::toTaskResponse).toList(),
+            pageResult.getNumber(),
+            pageResult.getSize(),
+            pageResult.getTotalElements(),
+            pageResult.getTotalPages()
+        );
     }
 
     private ProjectResponse toProjectResponse(Project project) {

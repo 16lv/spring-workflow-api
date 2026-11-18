@@ -42,10 +42,10 @@ class TaskFlowIntegrationTest {
 
     @Test
     void fullProjectAndTaskLifecycleWithJwtAndStateValidation() throws Exception {
-        // 1. Register user
+        // 1. Register user (requested elevated role is ignored safely; always assigns MEMBER)
         var registerReq = new RegisterRequest(
-            "engineer@cardiff.ac.uk",
-            "Cardiff Engineer",
+            "engineer@example.org",
+            "Platform Engineer",
             "SecurePass123!",
             Role.MAINTAINER
         );
@@ -55,6 +55,7 @@ class TaskFlowIntegrationTest {
                 .content(objectMapper.writeValueAsString(registerReq)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.role").value("MEMBER"))
             .andReturn();
 
         AuthResponse auth = objectMapper.readValue(
@@ -162,11 +163,30 @@ class TaskFlowIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(projectReq)))
             .andExpect(status().isConflict());
+
+        // 8. Fetch task by ID directly and delete cleanly
+        mockMvc.perform(get("/api/v1/tasks/{id}", task.id())
+                .header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(task.id()));
+
+        mockMvc.perform(delete("/api/v1/tasks/{id}", task.id())
+                .header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", task.id())
+                .header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isNotFound());
     }
 
     @Test
-    void unauthenticatedRequestsToProtectedEndpointsReturn401() throws Exception {
+    void unauthenticatedRequestsAndBadLoginReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/projects"))
+            .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new LoginRequest("nobody@example.org", "wrong-pass"))))
             .andExpect(status().isUnauthorized());
     }
 }

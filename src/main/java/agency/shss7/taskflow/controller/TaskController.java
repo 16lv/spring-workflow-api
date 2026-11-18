@@ -5,7 +5,6 @@ import agency.shss7.taskflow.domain.TaskStatus;
 import agency.shss7.taskflow.dto.TaskDtos.*;
 import agency.shss7.taskflow.service.WorkflowService;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -28,7 +27,7 @@ public class TaskController {
     }
 
     @GetMapping
-    public Page<TaskResponse> searchTasks(
+    public PagedTaskResponse searchTasks(
         @RequestParam(required = false) Long projectId,
         @RequestParam(required = false) TaskStatus status,
         @RequestParam(required = false) TaskPriority priority,
@@ -46,6 +45,11 @@ public class TaskController {
             q,
             PageRequest.of(Math.max(page, 0), clampedSize, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
+    }
+
+    @GetMapping("/{taskId}")
+    public TaskResponse getTask(@PathVariable Long taskId) {
+        return workflowService.getTaskById(taskId);
     }
 
     @PatchMapping("/{taskId}")

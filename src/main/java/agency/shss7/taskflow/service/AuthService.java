@@ -32,12 +32,13 @@ public class AuthService {
         if (userRepository.existsByEmailIgnoreCase(request.email())) {
             throw new IllegalArgumentException("An account with this email already exists");
         }
-        Role assignedRole = request.role() != null ? request.role() : Role.MEMBER;
+        // Self-registration always grants the standard MEMBER role; elevated roles
+        // must not be self-asserted on an unauthenticated endpoint.
         UserAccount account = new UserAccount(
             request.email(),
             request.fullName(),
             passwordEncoder.encode(request.password()),
-            assignedRole
+            Role.MEMBER
         );
         UserAccount saved = userRepository.save(account);
         String token = jwtTokenService.issueToken(saved);
