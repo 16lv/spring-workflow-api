@@ -121,7 +121,7 @@ public class WorkflowService {
 
     @Transactional(readOnly = true)
     public TaskResponse getTaskById(Long taskId) {
-        TaskItem task = taskRepository.findById(taskId)
+        TaskItem task = taskRepository.findWithDetailsById(taskId)
             .orElseThrow(() -> new EntityNotFoundException("Task ID " + taskId + " not found"));
         return toTaskResponse(task);
     }
