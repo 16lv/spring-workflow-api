@@ -38,4 +38,10 @@ public class ProjectController {
     public ProjectResponse getProject(@PathVariable String code) {
         return workflowService.getProjectByCode(code);
     }
+
+    @DeleteMapping("/{code}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteProject(@PathVariable String code, Authentication authentication) {
+        workflowService.deleteProjectByCode(code, authentication.getName());
+    }
 }

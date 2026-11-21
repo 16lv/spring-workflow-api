@@ -177,6 +177,33 @@ class TaskFlowIntegrationTest {
         mockMvc.perform(get("/api/v1/tasks/{id}", task.id())
                 .header(HttpHeaders.AUTHORIZATION, bearer))
             .andExpect(status().isNotFound());
+
+        // 9. Another user cannot delete someone else's project (403 Forbidden), owner can (204)
+        var otherUserReq = new RegisterRequest(
+            "observer@example.org",
+            "Observer User",
+            "SecurePass123!",
+            Role.MEMBER
+        );
+        MvcResult otherRes = mockMvc.perform(post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(otherUserReq)))
+            .andExpect(status().isCreated())
+            .andReturn();
+        AuthResponse otherAuth = objectMapper.readValue(otherRes.getResponse().getContentAsString(), AuthResponse.class);
+
+        mockMvc.perform(delete("/api/v1/projects/CORE-API")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherAuth.accessToken()))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.title").value("Forbidden"));
+
+        mockMvc.perform(delete("/api/v1/projects/CORE-API")
+                .header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/projects/CORE-API")
+                .header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isNotFound());
     }
 
     @Test
