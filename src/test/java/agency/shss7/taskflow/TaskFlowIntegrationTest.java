@@ -216,4 +216,83 @@ class TaskFlowIntegrationTest {
                 .content(objectMapper.writeValueAsString(new LoginRequest("nobody@example.org", "wrong-pass"))))
             .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void listProjectsAggregatesTaskCountsAcrossPopulatedAndEmptyProjects() throws Exception {
+        var registerReq = new RegisterRequest(
+            "aggregator@example.org",
+            "Release Lead",
+            "SecurePass123!",
+            Role.MEMBER
+        );
+        MvcResult regRes = mockMvc.perform(post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerReq)))
+            .andExpect(status().isCreated())
+            .andReturn();
+        AuthResponse auth = objectMapper.readValue(regRes.getResponse().getContentAsString(), AuthResponse.class);
+        String bearer = "Bearer " + auth.accessToken();
+
+        ProjectResponse populated = objectMapper.readValue(
+            mockMvc.perform(post("/api/v1/projects")
+                    .header(HttpHeaders.AUTHORIZATION, bearer)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(
+                        new CreateProjectRequest("AGG-ONE", "Populated Project", "Has done and open tasks")
+                    )))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(),
+            ProjectResponse.class
+        );
+        mockMvc.perform(post("/api/v1/projects")
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(
+                    new CreateProjectRequest("AGG-EMPTY", "Empty Project", "No tasks created")
+                )))
+            .andExpect(status().isCreated());
+
+        TaskResponse doneTask = objectMapper.readValue(
+            mockMvc.perform(post("/api/v1/tasks")
+                    .header(HttpHeaders.AUTHORIZATION, bearer)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(new CreateTaskRequest(
+                        populated.id(), "Finish API docs", null, TaskPriority.MEDIUM, null, null
+                    ))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(),
+            TaskResponse.class
+        );
+        mockMvc.perform(post("/api/v1/tasks")
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new CreateTaskRequest(
+                    populated.id(), "Pending follow-up", null, TaskPriority.LOW, null, null
+                ))))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/status", doneTask.id())
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new StatusTransitionRequest(TaskStatus.IN_PROGRESS))))
+            .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/tasks/{id}/status", doneTask.id())
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new StatusTransitionRequest(TaskStatus.DONE))))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/projects")
+                .header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[?(@.code=='AGG-ONE')].totalTasks").value(org.hamcrest.Matchers.contains(2)))
+            .andExpect(jsonPath("$[?(@.code=='AGG-ONE')].completedTasks").value(org.hamcrest.Matchers.contains(1)))
+            .andExpect(jsonPath("$[?(@.code=='AGG-EMPTY')].totalTasks").value(org.hamcrest.Matchers.contains(0)))
+            .andExpect(jsonPath("$[?(@.code=='AGG-EMPTY')].completedTasks").value(org.hamcrest.Matchers.contains(0)));
+
+        mockMvc.perform(delete("/api/v1/projects/AGG-ONE").header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/api/v1/projects/AGG-EMPTY").header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isNoContent());
+    }
 }

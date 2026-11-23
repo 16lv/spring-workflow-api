@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface TaskItemRepository extends JpaRepository<TaskItem, Long> {
@@ -38,4 +39,19 @@ public interface TaskItemRepository extends JpaRepository<TaskItem, Long> {
     long countByProjectId(Long projectId);
 
     long countByProjectIdAndStatus(Long projectId, TaskStatus status);
+
+    interface ProjectTaskCounts {
+        Long getProjectId();
+        long getTotalCount();
+        long getCompletedCount();
+    }
+
+    @Query("""
+        SELECT t.project.id AS projectId,
+               COUNT(t) AS totalCount,
+               COALESCE(SUM(CASE WHEN t.status = :doneStatus THEN 1L ELSE 0L END), 0L) AS completedCount
+        FROM TaskItem t
+        GROUP BY t.project.id
+    """)
+    List<ProjectTaskCounts> findProjectTaskCounts(@Param("doneStatus") TaskStatus doneStatus);
 }

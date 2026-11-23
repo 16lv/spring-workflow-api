@@ -10,7 +10,7 @@ Stateless REST API for engineering project and task lifecycle tracking built wit
 
 - **Stateless JWT authentication**: `/api/v1/auth/register` and `/api/v1/auth/login` hash passwords with BCrypt and issue HS256 JWT tokens validated per request via `JwtAuthenticationFilter`. Public sign-up always assigns `Role.MEMBER`.
 - **Enforced workflow state machine**: `TaskStatus` validates transitions (`BACKLOG -> IN_PROGRESS -> IN_REVIEW -> DONE`, plus `ARCHIVED`), returning HTTP `422` (`ProblemDetail`) when invalid state jumps are requested.
-- **Query efficiency (`@EntityGraph`)**: Repository queries fetch `project` and `assignee`/`owner` relations eagerly when serialising responses, avoiding N+1 lazy lookups while returning an explicit `PagedTaskResponse` DTO.
+- **Query efficiency (`@EntityGraph` & grouped rollups)**: Repository queries fetch `project` and `assignee`/`owner` relations eagerly when serialising responses, and `listProjects()` aggregates total/completed task counts in a single grouped JPQL query instead of per-project count lookups.
 - **Structured error responses**: `GlobalExceptionHandler` converts Bean Validation, missing entity (`404`), conflict (`409`), and workflow state errors (`422`) into RFC 7807 JSON payloads.
 
 ## Technology Stack

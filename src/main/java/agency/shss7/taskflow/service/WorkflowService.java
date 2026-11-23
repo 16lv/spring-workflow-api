@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class WorkflowService {
@@ -46,9 +49,24 @@ public class WorkflowService {
 
     @Transactional(readOnly = true)
     public List<ProjectResponse> listProjects() {
-        return projectRepository.findAll()
+        List<Project> projects = projectRepository.findAll();
+        if (projects.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, TaskItemRepository.ProjectTaskCounts> countsByProject = taskRepository
+            .findProjectTaskCounts(TaskStatus.DONE)
             .stream()
-            .map(this::toProjectResponse)
+            .collect(Collectors.toMap(
+                TaskItemRepository.ProjectTaskCounts::getProjectId,
+                Function.identity()
+            ));
+        return projects.stream()
+            .map(project -> {
+                TaskItemRepository.ProjectTaskCounts counts = countsByProject.get(project.getId());
+                long total = counts != null ? counts.getTotalCount() : 0L;
+                long completed = counts != null ? counts.getCompletedCount() : 0L;
+                return toProjectResponse(project, total, completed);
+            })
             .toList();
     }
 
@@ -162,6 +180,10 @@ public class WorkflowService {
     private ProjectResponse toProjectResponse(Project project) {
         long total = taskRepository.countByProjectId(project.getId());
         long completed = taskRepository.countByProjectIdAndStatus(project.getId(), TaskStatus.DONE);
+        return toProjectResponse(project, total, completed);
+    }
+
+    private ProjectResponse toProjectResponse(Project project, long total, long completed) {
         return new ProjectResponse(
             project.getId(),
             project.getCode(),
