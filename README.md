@@ -32,6 +32,7 @@ Stateless REST API for engineering project and task lifecycle tracking built wit
 | `GET` | `/api/v1/projects/{code}` | JWT | Fetch project summary by code |
 | `DELETE` | `/api/v1/projects/{code}` | Owner JWT | Delete an owned project and its tasks (`204`, `403` otherwise) |
 | `GET` / `POST` | `/api/v1/tasks` | JWT | Filter paginated tasks or create a task |
+| `GET` | `/api/v1/tasks/stats` | JWT | Grouped task counts across every workflow state |
 | `GET` | `/api/v1/tasks/{id}` | JWT | Fetch single task by ID |
 | `PATCH` | `/api/v1/tasks/{id}` | JWT | Update task metadata |
 | `PATCH` | `/api/v1/tasks/{id}/status` | JWT | Transition task workflow state |

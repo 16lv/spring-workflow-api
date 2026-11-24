@@ -54,4 +54,12 @@ public interface TaskItemRepository extends JpaRepository<TaskItem, Long> {
         GROUP BY t.project.id
     """)
     List<ProjectTaskCounts> findProjectTaskCounts(@Param("doneStatus") TaskStatus doneStatus);
+
+    interface StatusCount {
+        TaskStatus getStatus();
+        long getCount();
+    }
+
+    @Query("SELECT t.status AS status, COUNT(t) AS count FROM TaskItem t GROUP BY t.status")
+    List<StatusCount> countTasksByStatus();
 }

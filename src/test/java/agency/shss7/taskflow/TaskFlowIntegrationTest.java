@@ -295,4 +295,70 @@ class TaskFlowIntegrationTest {
         mockMvc.perform(delete("/api/v1/projects/AGG-EMPTY").header(HttpHeaders.AUTHORIZATION, bearer))
             .andExpect(status().isNoContent());
     }
+
+    @Test
+    void caseInsensitiveAuthAndTaskStatsEndpointReportAccurateCounts() throws Exception {
+        var registerReq = new RegisterRequest(
+            "StatsUser@Example.org",
+            "Analytics Lead",
+            "SecurePass123!",
+            Role.MEMBER
+        );
+        mockMvc.perform(post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerReq)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.email").value("statsuser@example.org"));
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new RegisterRequest(
+                    "STATSUSER@example.org",
+                    "Duplicate Lead",
+                    "SecurePass123!",
+                    Role.MEMBER
+                ))))
+            .andExpect(status().isConflict());
+
+        AuthResponse loginAuth = objectMapper.readValue(
+            mockMvc.perform(post("/api/v1/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(new LoginRequest("STATSUSER@EXAMPLE.ORG", "SecurePass123!"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(),
+            AuthResponse.class
+        );
+        assertThat(loginAuth.email()).isEqualTo("statsuser@example.org");
+        String bearer = "Bearer " + loginAuth.accessToken();
+
+        ProjectResponse proj = objectMapper.readValue(
+            mockMvc.perform(post("/api/v1/projects")
+                    .header(HttpHeaders.AUTHORIZATION, bearer)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(new CreateProjectRequest(
+                        "STAT-01", "Metrics Board", "Verify grouped status stats"
+                    ))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(),
+            ProjectResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/tasks")
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new CreateTaskRequest(
+                    proj.id(), "Backlog item", null, TaskPriority.LOW, null, null
+                ))))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/tasks/stats")
+                .header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.BACKLOG").isNumber())
+            .andExpect(jsonPath("$.IN_PROGRESS").isNumber())
+            .andExpect(jsonPath("$.DONE").isNumber());
+
+        mockMvc.perform(delete("/api/v1/projects/STAT-01").header(HttpHeaders.AUTHORIZATION, bearer))
+            .andExpect(status().isNoContent());
+    }
 }

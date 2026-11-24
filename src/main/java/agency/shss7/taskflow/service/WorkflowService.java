@@ -13,6 +13,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -153,6 +154,18 @@ public class WorkflowService {
         TaskItem task = taskRepository.findWithDetailsById(taskId)
             .orElseThrow(() -> new EntityNotFoundException("Task ID " + taskId + " not found"));
         return toTaskResponse(task);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<TaskStatus, Long> getTaskStatusStats() {
+        Map<TaskStatus, Long> counts = new EnumMap<>(TaskStatus.class);
+        for (TaskStatus status : TaskStatus.values()) {
+            counts.put(status, 0L);
+        }
+        for (TaskItemRepository.StatusCount row : taskRepository.countTasksByStatus()) {
+            counts.put(row.getStatus(), row.getCount());
+        }
+        return counts;
     }
 
     @Transactional(readOnly = true)

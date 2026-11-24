@@ -29,13 +29,14 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmailIgnoreCase(request.email())) {
+        String cleanEmail = request.email().trim().toLowerCase();
+        if (userRepository.existsByEmailIgnoreCase(cleanEmail)) {
             throw new IllegalArgumentException("An account with this email already exists");
         }
         // Self-registration always grants the standard MEMBER role; elevated roles
         // must not be self-asserted on an unauthenticated endpoint.
         UserAccount account = new UserAccount(
-            request.email(),
+            cleanEmail,
             request.fullName(),
             passwordEncoder.encode(request.password()),
             Role.MEMBER
@@ -54,7 +55,8 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        UserAccount account = userRepository.findByEmailIgnoreCase(request.email())
+        String cleanEmail = request.email().trim().toLowerCase();
+        UserAccount account = userRepository.findByEmailIgnoreCase(cleanEmail)
             .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
         if (!passwordEncoder.matches(request.password(), account.getPasswordHash())) {
             throw new BadCredentialsException("Invalid email or password");
